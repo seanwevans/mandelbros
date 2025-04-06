@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mandelbrot Set</title>
+</head>
+<body>
+<script>
+let c = 0;
+
+function MandelbrotSet(
+  width = 2**10,
+  max_iter = 2**15,
+  zoom = 2**0,
+  centerX = -1.55,
+  centerY = 0,
+  aspectRatio = 3.1415926535,
+) {
+  const mandelbrotDiv = document.createElement("div");
+  mandelbrotDiv.id = "mandelbrot";
+  document.body.appendChild(mandelbrotDiv);
+
+  const height = width;
+  const rangeY = 1 / zoom;
+  const rangeX = rangeY * aspectRatio;
+
+  const x_min = centerX - rangeX / 2;
+  const x_max = centerX + rangeX / 2;
+  const y_min = centerY - rangeY / 2;
+  const y_max = centerY + rangeY / 2;
+
+  mandelbrotDiv.style.display = "grid";
+  mandelbrotDiv.style.aspectRatio = aspectRatio;
+  mandelbrotDiv.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+  mandelbrotDiv.style.gridTemplateRows = `repeat(${height}, 1fr)`;
+
+  const fragment = document.createDocumentFragment();
+
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const x = x_min + (x_max - x_min) * (col / (width - 1));
+      const y = y_min + (y_max - y_min) * (row / (height - 1));
+
+      let zx = 0, zy = 0, zx2 = 0, zy2 = 0, i = 0;
+      let zxPrev = 0, zyPrev = 0;
+      const bailoutPeriod = 100;
+
+      // Cardioid and bulb check (boundary tracing)
+      const p = Math.sqrt((x - 0.25) ** 2 + y ** 2);
+      if (x < p - 2 * p * p + 0.25 || (x + 1) ** 2 + y ** 2 < 0.0625) {
+        i = max_iter;
+      } else {
+        while (zx2 + zy2 < 4 && i < max_iter) {
+          zy = 2 * zx * zy + y;
+          zx = zx2 - zy2 + x;
+          zx2 = zx * zx;
+          zy2 = zy * zy;
+          i++;
+          c++;
+
+          // Periodic bailout check
+          if (i % bailoutPeriod === 0) {
+            if (Math.abs(zx - zxPrev) < 1e-10 && Math.abs(zy - zyPrev) < 1e-10) break;
+            zxPrev = zx;
+            zyPrev = zy;
+          }
+        }
+      }
+
+      // Smooth escape time
+      let mu = i - Math.log2(Math.log2(zx2 + zy2) / 2);
+      let r;
+      let g;
+      let b;
+      if (i == max_iter) {
+        r = 255;
+        g = 255;
+        b = 255;
+        mu = max_iter;
+      } else {
+        r = 255 * Math.pow(mu / max_iter, 0.25); 
+        g = 255 * Math.pow(mu / max_iter, 0.5); 
+        b = 255 * mu * i;     
+      }
+      
+      
+      const cell = document.createElement("div");
+      cell.style.backgroundColor = `rgb(${r % 256}, ${g % 256}, ${b % 256})`;
+      fragment.appendChild(cell);
+    }
+  }
+  mandelbrotDiv.appendChild(fragment);
+}
+
+const startTime = performance.now();
+MandelbrotSet();
+const dur = performance.now() - startTime;
+
+document.body.innerHTML += `<footer>
+  calculated ${c.toLocaleString()} iterations 
+  in ${dur.toLocaleString()}ms 
+  (${(c / dur).toLocaleString()} it/s)
+</footer>`;
+</script>
+</body>
+</html>
