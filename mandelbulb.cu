@@ -100,6 +100,10 @@ int main() {
 
     cudaDeviceSynchronize();
 
+    // Copy image from device to host
+    int* hostImage = new int[WIDTH * HEIGHT];
+    cudaMemcpy(hostImage, image, WIDTH * HEIGHT * sizeof(int), cudaMemcpyDeviceToHost);
+
     // Save the image to a bitmap file
     std::ofstream file("mandelbulb.bmp", std::ios::binary | std::ios::out);
     if (file.is_open()) {
@@ -127,7 +131,7 @@ int main() {
 
         for (int y = HEIGHT - 1; y >= 0; y--) {
             for (int x = 0; x < WIDTH; x++) {
-                int color = image[y * WIDTH + x];
+                int color = hostImage[y * WIDTH + x];
                 file.put((color >> 16) & 0xff);
                 file.put((color >> 8) & 0xff);
                 file.put(color & 0xff);
@@ -141,6 +145,7 @@ int main() {
         return 1;
     }
 
+    delete[] hostImage;
     cudaFree(image);
     return 0;
 }
