@@ -1,0 +1,11 @@
+# Build outputs
+*.bmp
+*.o
+*.out
+*.exe
+*.a
+*.so
+mandelbrot_c
+mandelbrot_cuda
+mandelbrot_cpp_cuda
+mandelbulb_cuda
