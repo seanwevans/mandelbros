@@ -11,8 +11,6 @@ To build the examples you will need:
 
 - **gcc** – for the plain C implementation using AVX intrinsics.
 - **nvcc** (CUDA Toolkit) – for the CUDA examples.
-- **gmp** development headers and library – required by the CUDA/C++ versions
-  that use the GNU Multiple Precision Arithmetic Library (`<gmp.h>`).
 - A C++ compiler such as **g++** (generally provided with the CUDA Toolkit when
   using `nvcc`).
 
@@ -36,11 +34,11 @@ gcc -O2 -mavx2 -std=c11 mandelbrot.c -o mandelbrot_c -lm
 
 ### mandelbrot.cu
 
-CUDA version that also relies on GMP for arbitrary precision arithmetic.
-Compile it with `nvcc` and link against the GMP library:
+CUDA version using double precision floating point numbers.
+Compile it with `nvcc`:
 
 ```bash
-nvcc -O2 mandelbrot.cu -o mandelbrot_cuda -lgmp
+nvcc -O2 mandelbrot.cu -o mandelbrot_cuda
 ```
 
 ### mandelbrot.cpp
@@ -49,7 +47,7 @@ Although this file has a `.cpp` extension it makes use of CUDA kernels. It can
 also be compiled with `nvcc`:
 
 ```bash
-nvcc -O2 mandelbrot.cpp -o mandelbrot_cpp_cuda -lgmp
+nvcc -O2 mandelbrot.cpp -o mandelbrot_cpp_cuda
 ```
 
 ### mandelbulb.cu
