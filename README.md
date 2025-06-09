@@ -5,6 +5,9 @@ images using different languages and technologies. The code was taken from a
 variety of experiments and is not guaranteed to be production ready, but it can
 serve as a starting point for exploring CPU, GPU and JavaScript implementations.
 
+Some of the GPU examples are experimental and may require modification to build
+or run on your particular hardware.
+
 ## Requirements
 
 To build the examples you will need:
@@ -40,7 +43,7 @@ CUDA version that also relies on GMP for arbitrary precision arithmetic.
 Compile it with `nvcc` and link against the GMP library:
 
 ```bash
-nvcc -O2 mandelbrot.cu -o mandelbrot_cuda -lgmp
+nvcc -O2 -arch=sm_52 mandelbrot.cu -o mandelbrot_cuda -lgmp
 ```
 
 ### mandelbrot.cpp
@@ -49,7 +52,7 @@ Although this file has a `.cpp` extension it makes use of CUDA kernels. It can
 also be compiled with `nvcc`:
 
 ```bash
-nvcc -O2 mandelbrot.cpp -o mandelbrot_cpp_cuda -lgmp
+nvcc -O2 -arch=sm_52 mandelbrot.cpp -o mandelbrot_cpp_cuda -lgmp
 ```
 
 ### mandelbulb.cu
@@ -57,7 +60,7 @@ nvcc -O2 mandelbrot.cpp -o mandelbrot_cpp_cuda -lgmp
 Another CUDA example that renders a Mandelbulb fractal:
 
 ```bash
-nvcc -O2 mandelbulb.cu -o mandelbulb_cuda
+nvcc -O2 -arch=sm_52 mandelbulb.cu -o mandelbulb_cuda
 ```
 
 ## Viewing `mandelbrot.html`
@@ -75,5 +78,11 @@ Then open <http://localhost:8000/mandelbrot.html> in your browser.
 
 ## License
 
+This project is made available under the terms of the [MIT License](LICENSE).
+
+
+## License
+
 This project is licensed under the [MIT License](LICENSE).
+
 
