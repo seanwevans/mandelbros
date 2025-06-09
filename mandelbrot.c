@@ -54,7 +54,8 @@ void mandelbrot_simd(uint32_t* image) {
             for (int i = 0; i < 8; ++i) {
                 int index = py * WIDTH + px + i;
                 int color = _mm256_extract_epi32(iter, i);
-                image[index] = (255 - (color * 255 / MAX_ITER)) | ((255 - (color * 255 / MAX_ITER)) << 8) | ((255 - (color * 255 / MAX_ITER)) << 16);
+                int gray = 255 - (color * 255 / MAX_ITER);
+                image[index] = gray | (gray << 8) | (gray << 16);
             }
         }
     }

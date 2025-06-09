@@ -75,7 +75,14 @@ python3 -m http.server
 
 Then open <http://localhost:8000/mandelbrot.html> in your browser.
 
+
 ## License
 
 This project is made available under the terms of the [MIT License](LICENSE).
+
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
 
