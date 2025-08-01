@@ -1,5 +1,7 @@
 # Mandelbrot Examples
 
+[example](https://seanwevans.github.io/mandelbros/)
+
 This repository contains several small programs for generating Mandelbrot set
 images using different languages and technologies. The code was taken from a
 variety of experiments and is not guaranteed to be production ready, but it can
