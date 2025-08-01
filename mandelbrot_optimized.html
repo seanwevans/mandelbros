@@ -1,0 +1,665 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate Performance Mandelbrot Set</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: #fff;
+      font-family: "Courier New", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    canvas {
+      border: 1px solid #333;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    input,
+    button {
+      padding: 8px 12px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+
+    button {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    button:disabled {
+      background: #111;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .stats {
+      margin-top: 20px;
+      padding: 15px;
+      background: #111;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 400px;
+    }
+
+    .perf-metric {
+      font-size: 1.2em;
+      color: #0f0;
+      margin: 5px 0;
+    }
+
+    .improvement {
+      color: #ff0;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .loading-content {
+      text-align: center;
+      background: #111;
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid #333;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid #333;
+      border-top: 3px solid #0f0;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 1.2em;
+      color: #0f0;
+      margin-bottom: 10px;
+    }
+
+    .loading-details {
+      color: #aaa;
+      font-size: 0.9em;
+    }
+
+    .canvas-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .color-scheme {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select {
+      padding: 8px 12px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f0, #ff0);
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .worker-status {
+      color: #aaa;
+      font-size: 0.8em;
+      margin-top: 10px;
+    }
+
+    .optimization-note {
+      color: #0f0;
+      font-size: 0.8em;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <div class="control-group">
+      <label>Width</label>
+      <input type="number" id="width" value="2160" min="100" max="65536" step="10">
+    </div>
+    <div class="control-group">
+      <label>Max Iterations</label>
+      <input type="number" id="maxIter" value="10000" min="100" max="5000000" step="100">
+    </div>
+    <div class="control-group">
+      <label>Zoom</label>
+      <input type="number" id="zoom" value="0.5" min="0.1" max="1000" step="0.1">
+    </div>
+    <div class="control-group">
+      <label>Center X</label>
+      <input type="number" id="centerX" value="-0.5" step="0.01">
+    </div>
+    <div class="control-group">
+      <label>Center Y</label>
+      <input type="number" id="centerY" value="0" step="0.01">
+    </div>
+    <div class="control-group">
+      <label>Aspect Ratio</label>
+      <input type="number" id="aspectRatio" value="1" step="0.1">
+    </div>
+    <div class="control-group color-scheme">
+      <label>Color Scheme</label>
+      <select id="colorScheme">
+        <option value="original">Original</option>
+        <option value="smooth">Smooth Gradient</option>
+        <option value="fire">Fire</option>
+        <option value="ocean">Ocean</option>
+      </select>
+    </div>
+    <button id="generateBtn">Generate</button>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="mandelbrotCanvas"></canvas>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Calculating Mandelbrot Set...</div>
+      <div class="loading-details" id="loadingDetails">Preparing calculation...</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="worker-status" id="workerStatus">Initializing workers...</div>
+    </div>
+  </div>
+
+  <script>
+    let iterationCount = 0;
+    let lastDuration = 0;
+    let workerPool = [];
+    let numWorkers = navigator.hardwareConcurrency || 4;
+    // Pre-compiled worker for maximum performance
+    let workerBlobURL = null;
+    const colorPalettes = {
+      original: null,
+      smooth: new Array(256).fill(0).map((_, i) => {
+        const t = i / 255;
+        return [
+          Math.floor(9 * (1 - t) * t * t * t * 255),
+          Math.floor(15 * (1 - t) * (1 - t) * t * t * 255),
+          Math.floor(8.5 * (1 - t) * (1 - t) * (1 - t) * t * 255)
+        ];
+      }),
+      fire: new Array(256).fill(0).map((_, i) => {
+        const t = i / 255;
+        return [
+          Math.floor(255 * Math.min(1, t * 2)),
+          Math.floor(255 * Math.max(0, Math.min(1, t * 2 - 0.5))),
+          Math.floor(255 * Math.max(0, t * 2 - 1))
+        ];
+      }),
+      ocean: new Array(256).fill(0).map((_, i) => {
+        const t = i / 255;
+        return [
+          Math.floor(55 + 200 * t * t),
+          Math.floor(55 + 200 * t),
+          Math.floor(255 * (0.5 + 0.5 * Math.sin(t * Math.PI)))
+        ];
+      })
+    };
+    // Ultimate optimized worker code
+    const workerCode = `
+      // Constants for maximum performance
+      const ESCAPE_THRESHOLD = 4;
+      const COLOR_MASK = 255;
+      
+      self.onmessage = function(e) {
+        const { 
+          startRow, endRow, width, height, x_min, y_min, dx, dy, 
+          max_iter, colorScheme, palette, workerId 
+        } = e.data;
+        
+        const rowHeight = endRow - startRow;
+        const totalPixels = rowHeight * width;
+        
+        // Use ArrayBuffer with aligned memory
+        const buffer = new ArrayBuffer(totalPixels * 4);
+        const colors32 = new Uint32Array(buffer);
+        
+        let totalIterations = 0;
+        let pixelIndex = 0;
+        
+        // Pre-calculate all coordinates (cache-friendly)
+        const xCoords = new Float64Array(width);
+        const yCoords = new Float64Array(rowHeight);
+        
+        for (let col = 0; col < width; col++) {
+          xCoords[col] = x_min + dx * col;
+        }
+        
+        for (let r = 0; r < rowHeight; r++) {
+          yCoords[r] = y_min + dy * (startRow + r);
+        }
+        
+        // Pre-calculated constants for color schemes
+        let sinTable, powTable;
+        if (colorScheme === 'original') {
+          // Pre-calculate expensive math operations
+          sinTable = new Float32Array(max_iter + 1);
+          powTable = new Float32Array(max_iter + 1);
+          for (let i = 0; i <= max_iter; i++) {
+            sinTable[i] = Math.sin(i) * 256;
+            powTable[i] = Math.pow(i || 1, -5) * 256; // Avoid divide by zero
+          }
+        }
+        
+        // Main computation with maximum optimization
+        for (let rowIdx = 0; rowIdx < rowHeight; rowIdx++) {
+          const y = yCoords[rowIdx];
+          const actualRow = startRow + rowIdx;
+          
+          for (let col = 0; col < width; col++) {
+            const x = xCoords[col];
+            
+            // Hyper-optimized Mandelbrot calculation
+            let zx = 0, zy = 0, zx2 = 0, zy2 = 0;
+            let i = 0;
+            
+            // Manual 8-way loop unrolling for extreme performance
+            while (i < max_iter) {
+              // Iteration 1
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 2
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 3
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 4
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 5
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 6
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 7
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+              
+              if (i >= max_iter) break;
+              
+              // Iteration 8
+              zy = 2 * zx * zy + y;
+              zx = zx2 - zy2 + x;
+              zx2 = zx * zx;
+              zy2 = zy * zy;
+              i++;
+              totalIterations++;
+              if (zx2 * zy2 >= ESCAPE_THRESHOLD) break;
+            }
+            
+            // Ultra-fast color calculation with lookup tables
+            let r, g, b;
+            if (colorScheme === 'original') {
+              if (i === max_iter) {
+                r = actualRow & COLOR_MASK;
+                g = (actualRow ^ col) & COLOR_MASK;
+                b = col & COLOR_MASK;
+              } else {
+                // Use pre-calculated lookup tables
+                r = Math.floor(sinTable[i]) & COLOR_MASK;
+                g = Math.floor(powTable[i]) & COLOR_MASK;
+                b = (i * i) & COLOR_MASK;
+              }
+            } else {
+              if (i === max_iter) {
+                r = g = b = 0;
+              } else {
+                const colorIndex = ((i * 255 / max_iter) | 0) & COLOR_MASK;
+                const paletteColor = palette[colorIndex];
+                r = paletteColor[0];
+                g = paletteColor[1];
+                b = paletteColor[2];
+              }
+            }
+            
+            // Single 32-bit write (ABGR format for little-endian)
+            colors32[pixelIndex++] = (255 << 24) | (b << 16) | (g << 8) | r;
+          }
+        }
+        
+        self.postMessage({
+          workerId,
+          startRow,
+          endRow,
+          colors: new Uint8Array(buffer),
+          totalIterations
+        }, [buffer]);
+      };
+    `;
+
+    function createWorkers() {
+      // Clean up existing workers and URL
+      workerPool.forEach(worker => worker.terminate());
+      if (workerBlobURL) {
+        URL.revokeObjectURL(workerBlobURL);
+      }
+      // Create optimized worker blob once and reuse
+      const blob = new Blob([workerCode], {
+        type: 'application/javascript'
+      });
+      workerBlobURL = URL.createObjectURL(blob);
+      workerPool = [];
+      for (let i = 0; i < numWorkers; i++) {
+        const worker = new Worker(workerBlobURL);
+        // Set high priority if supported
+        if ('scheduler' in window && 'postTask' in window.scheduler) {
+          worker.priority = 'user-blocking';
+        }
+        workerPool.push(worker);
+      }
+    }
+
+    function MandelbrotSetOptimized(
+      width = 480,
+      max_iter = 1000,
+      zoom = 0.5,
+      centerX = -0.5,
+      centerY = 0,
+      aspectRatio = 1,
+      colorScheme = 'original'
+    ) {
+      return new Promise((resolve) => {
+        const canvas = document.getElementById("mandelbrotCanvas");
+        const ctx = canvas.getContext("2d");
+        const height = width;
+        canvas.width = width;
+        canvas.height = height;
+        // Exact same coordinate calculation as original
+        const rangeY = 1 / zoom;
+        const rangeX = rangeY * aspectRatio;
+        const x_min = centerX - rangeX / 2;
+        const x_max = centerX + rangeX / 2;
+        const y_min = centerY - rangeY / 2;
+        const y_max = centerY + rangeY / 2;
+        const dx = (x_max - x_min) / (width - 1);
+        const dy = (y_max - y_min) / (height - 1);
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+        const data32 = new Uint32Array(data.buffer);
+        iterationCount = 0;
+        const progressFill = document.getElementById('progressFill');
+        const workerStatus = document.getElementById('workerStatus');
+        // Ultra-adaptive chunking for maximum efficiency
+        const totalPixels = width * height;
+        const optimalChunkPixels = Math.max(1024, Math.floor(totalPixels / (numWorkers * 12)));
+        const optimalChunkSize = Math.max(1, Math.floor(optimalChunkPixels / width));
+        const chunks = [];
+        for (let startRow = 0; startRow < height; startRow += optimalChunkSize) {
+          const endRow = Math.min(startRow + optimalChunkSize, height);
+          chunks.push({
+            startRow,
+            endRow
+          });
+        }
+        let chunksCompleted = 0;
+        const totalChunks = chunks.length;
+        const palette = colorPalettes[colorScheme];
+        workerStatus.textContent = `${numWorkers} workers, ${totalChunks} chunks (ultimate mode)`;
+        // High-performance work distribution
+        let chunkIndex = 0;
+        const activeWorkers = Math.min(numWorkers, totalChunks);
+        const processNextChunk = (workerIdx) => {
+          if (chunkIndex >= totalChunks) return;
+          const chunk = chunks[chunkIndex++];
+          workerPool[workerIdx].onmessage = function(e) {
+            const {
+              startRow,
+              endRow,
+              colors,
+              totalIterations
+            } = e.data;
+            iterationCount += totalIterations;
+            chunksCompleted++;
+            const progress = (chunksCompleted / totalChunks) * 100;
+            progressFill.style.width = progress + '%';
+            workerStatus.textContent = `Chunk ${chunksCompleted}/${totalChunks} (${Math.round(progress)}%)`;
+            // Maximum speed pixel copying with bulk operations
+            const rowHeight = endRow - startRow;
+            const pixelsPerRow = width;
+            const srcView32 = new Uint32Array(colors.buffer);
+            // Copy in larger blocks for better cache performance
+            const blockSize = Math.min(pixelsPerRow, 256); // Cache-line optimized
+            for (let row = 0; row < rowHeight; row++) {
+              const srcRowStart = row * pixelsPerRow;
+              const destRowStart = (startRow + row) * pixelsPerRow;
+              // Block-wise copying for maximum memory bandwidth
+              for (let blockStart = 0; blockStart < pixelsPerRow; blockStart += blockSize) {
+                const blockEnd = Math.min(blockStart + blockSize, pixelsPerRow);
+                const copySize = blockEnd - blockStart;
+                // Use set() for optimal performance
+                data32.set(
+                  srcView32.subarray(srcRowStart + blockStart, srcRowStart + blockEnd),
+                  destRowStart + blockStart
+                );
+              }
+            }
+            if (chunksCompleted === totalChunks) {
+              ctx.putImageData(imageData, 0, 0);
+              resolve();
+            } else {
+              // Process next chunk immediately
+              processNextChunk(workerIdx);
+            }
+          };
+          workerPool[workerIdx].postMessage({
+            startRow: chunk.startRow,
+            endRow: chunk.endRow,
+            width,
+            height,
+            x_min,
+            y_min,
+            dx,
+            dy,
+            max_iter,
+            colorScheme,
+            palette,
+            workerId: workerIdx
+          });
+        };
+        // Launch all workers with maximum concurrency
+        for (let w = 0; w < activeWorkers; w++) {
+          processNextChunk(w);
+        }
+      });
+    }
+
+    function showLoadingOverlay(width, maxIter, zoom) {
+      const overlay = document.getElementById("loadingOverlay");
+      const details = document.getElementById("loadingDetails");
+      const progressFill = document.getElementById('progressFill');
+      details.textContent = `${width}×${width} pixels, ${maxIter} max iterations, ${zoom}x zoom`;
+      progressFill.style.width = '0%';
+      overlay.style.display = "flex";
+    }
+
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById("loadingOverlay");
+      overlay.style.display = "none";
+    }
+
+    function setControlsDisabled(disabled) {
+      const inputs = document.querySelectorAll('input, button, select');
+      inputs.forEach(input => {
+        input.disabled = disabled;
+      });
+    }
+    async function generateMandelbrot() {
+      const width = parseInt(document.getElementById("width").value);
+      const maxIter = parseInt(document.getElementById("maxIter").value);
+      const zoom = parseFloat(document.getElementById("zoom").value);
+      const centerX = parseFloat(document.getElementById("centerX").value);
+      const centerY = parseFloat(document.getElementById("centerY").value);
+      const aspectRatio = parseFloat(document.getElementById("aspectRatio").value);
+      const colorScheme = document.getElementById("colorScheme").value;
+      showLoadingOverlay(width, maxIter, zoom);
+      setControlsDisabled(true);
+      const startTime = performance.now();
+      await MandelbrotSetOptimized(width, maxIter, zoom, centerX, centerY, aspectRatio, colorScheme);
+      const dur = performance.now() - startTime;
+      const statsDiv = document.getElementById("stats");
+      const iterPerS = Math.round(iterationCount / dur);
+      const megaPixels = ((width * width) / 1000000).toFixed(2);
+      let improvementText = '';
+      if (lastDuration > 0) {
+        const improvement = ((lastDuration - dur) / lastDuration * 100).toFixed(1);
+        if (improvement > 0) {
+          improvementText = `<div class="improvement">↑ ${improvement}% faster than previous run</div>`;
+        } else if (improvement < 0) {
+          improvementText = `<div class="improvement">↓ ${Math.abs(improvement)}% slower than previous run</div>`;
+        }
+      }
+      statsDiv.innerHTML = `
+        <div class="perf-metric">
+          ${iterationCount.toLocaleString()} iterations 
+          in ${dur.toFixed(0)}ms 
+          (${iterPerS.toLocaleString()} it/s)
+        </div>
+        <div style="color: #aaa; font-size: 0.9em;">
+          ${megaPixels}MP @ ${numWorkers} cores
+        </div>
+        
+        ${improvementText}`;
+      lastDuration = dur;
+      hideLoadingOverlay();
+      setControlsDisabled(false);
+    }
+    document.getElementById("generateBtn").addEventListener("click", generateMandelbrot);
+    createWorkers();
+    generateMandelbrot();
+  </script>
+</body>
+
+</html>
