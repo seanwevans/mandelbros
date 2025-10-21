@@ -1,4 +1,5 @@
 # Mandelbrot Examples
+<img width="256" alt="Glowing Blue Mandelbrot Fractal" src="https://github.com/user-attachments/assets/12a162ee-773e-48ca-947e-e59283781937" />
 
 [example](https://seanwevans.github.io/mandelbros/)
 
